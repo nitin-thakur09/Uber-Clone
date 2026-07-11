@@ -374,3 +374,166 @@ curl -X POST http://localhost:3000/captains/register \
     }
   }'
 ```
+
+## POST /captains/login
+
+Authenticates an existing captain and returns a captain object with an authentication token.
+
+### Description
+
+This endpoint accepts a request body containing the captain's email and password. It validates the request data, checks the credentials against the stored captain record, and returns a JSON response with the authenticated captain and a JWT token.
+
+### Request URL
+
+`POST /captains/login`
+
+### Request Headers
+
+- `Content-Type: application/json`
+
+### Request Body
+
+```json
+{
+  "email": "john.captain@example.com",
+  "password": "secret123"
+}
+```
+
+### Required Fields
+
+- `email` (string) - required, must be a valid email address
+- `password` (string) - required, minimum 6 characters
+
+### Response Status Codes
+
+- `200 OK`
+  - Captain successfully authenticated.
+  - Response includes the authenticated captain object and an auth token.
+- `400 Bad Request`
+  - Validation failed or required fields are missing.
+  - Invalid email or password.
+  - Response includes validation error details.
+- `500 Internal Server Error`
+  - Server-side error during login.
+
+### Example Success Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "captain": {
+    "_id": "609d9b8f1c4ae12f7890abcd",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "john.captain@example.com",
+    "Vehicle": {
+      "color": "black",
+      "plate": "DL01AB1234",
+      "capacity": 4,
+      "type": "car"
+    },
+    "status": "inactive"
+  }
+}
+```
+
+### Notes
+
+- The password is compared against the stored hashed password.
+- The response omits the password field.
+- Ensure `JWT_SECRET` is configured in environment variables for token generation.
+
+## GET /captains/profile
+
+Returns the authenticated captain's profile information.
+
+### Description
+
+Requires a valid authentication token. The `authMiddleware.authcaptain` middleware verifies the token and attaches the captain to `req.captain`.
+
+### Request URL
+
+`GET /captains/profile`
+
+### Request Headers
+
+- `Authorization: Bearer <token>` (preferred)
+- or cookie: `token` (if the client uses cookies)
+
+### Request Body
+
+None
+
+### Response Status Codes
+
+- `200 OK` - Authenticated; returns the captain object.
+- `401 Unauthorized` - Missing or invalid token.
+- `500 Internal Server Error` - Server-side error.
+
+### Example Success Response
+
+```json
+{
+  "_id": "609d9b8f1c4ae12f7890abcd",
+  "fullname": {
+    "firstname": "John",
+    "lastname": "Doe"
+  },
+  "email": "john.captain@example.com",
+  "Vehicle": {
+    "color": "black",
+    "plate": "DL01AB1234",
+    "capacity": 4,
+    "type": "car"
+  },
+  "status": "inactive"
+}
+```
+
+### Notes
+
+- The endpoint returns the captain object attached by the auth middleware (`req.captain`).
+- Sensitive fields such as `password` are not returned.
+
+## POST /captains/logout
+
+Logs out the authenticated captain by clearing the auth cookie (if present) and blacklisting the token so it cannot be reused.
+
+### Description
+
+This endpoint invalidates the current JWT by storing it in a blacklist collection and clearing the `token` cookie on the response.
+
+### Request URL
+
+`POST /captains/logout`
+
+### Request Headers
+
+- `Authorization: Bearer <token>`
+- or cookie: `token`
+
+### Request Body
+
+None
+
+### Response Status Codes
+
+- `200 OK` - Logout successful; returns a confirmation message.
+- `401 Unauthorized` - Missing or invalid token.
+- `500 Internal Server Error` - Server-side error.
+
+### Example Success Response
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### Notes
+
+- The token is recorded in the `blacklistTokens` collection to prevent reuse.
+- If your client stores the token in a cookie, the server clears the `token` cookie on logout.
